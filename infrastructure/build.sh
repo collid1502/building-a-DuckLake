@@ -5,8 +5,8 @@ terraform fmt -recursive
 
 # creates AWS Resources through Terraform
 terraform validate
-terraform plan 
-terraform apply -auto-approve 
+terraform plan -var-file="db_secrets.tfvars" -var-file="ip.tfvars"
+terraform apply -var-file="db_secrets.tfvars" -var-file="ip.tfvars" #-auto-approve 
 
 echo ""
 echo "=============================================="

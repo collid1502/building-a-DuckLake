@@ -16,10 +16,26 @@ resource "aws_vpc" "Ducklake_VPC" {
 
 # A subnet is a range of IP addresses within your VPC. A subnet can be designated as public or private 
 # based on whether it has access to the internet (via an internet gateway)
-resource "aws_subnet" "ducklake_public" {
-  vpc_id            = aws_vpc.Ducklake_VPC.id
-  cidr_block        = "10.0.1.0/24" // smaller CIDR range within the VPC 
-  availability_zone = "eu-west-2a"  // Change to your desired AZ. which AWS data center the subnet resides
+resource "aws_subnet" "ducklake_public_1" {
+  vpc_id                  = aws_vpc.Ducklake_VPC.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "eu-west-2a"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "ducklake-public-1"
+  }
+}
+// we need at least 2 subnets for an RDS instance
+resource "aws_subnet" "ducklake_public_2" {
+  vpc_id                  = aws_vpc.Ducklake_VPC.id
+  cidr_block              = "10.0.2.0/24"
+  availability_zone       = "eu-west-2b"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "ducklake-public-2"
+  }
 }
 
 # Internet Gateway (IGW) allows communication between instances in VPC and the internet
@@ -44,7 +60,12 @@ resource "aws_route_table" "ducklake_route_public" {
 # This resource links a specific subnet with a route table
 # The subnet_id specifies the subnet (created earlier) that this route table will be associated with
 # The route_table_id specifies which route table (created earlier) will be associated with the subnet
-resource "aws_route_table_association" "ducklake_route_table_public" {
-  subnet_id      = aws_subnet.ducklake_public.id
+resource "aws_route_table_association" "ducklake_route_table_public_1" {
+  subnet_id      = aws_subnet.ducklake_public_1.id
+  route_table_id = aws_route_table.ducklake_route_public.id
+}
+
+resource "aws_route_table_association" "ducklake_route_table_public_2" {
+  subnet_id      = aws_subnet.ducklake_public_2.id
   route_table_id = aws_route_table.ducklake_route_public.id
 }

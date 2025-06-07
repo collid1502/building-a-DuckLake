@@ -1,3 +1,9 @@
+# ignore certain terraform files
+**.tfvars
+infrastructure/.terraform.lock.hcl
+**.tfstate
+**.tfstate.backup
+
 
 #-----------------------------------------------------------------------------------
 # Byte-compiled / optimized / DLL files
