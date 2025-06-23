@@ -4,6 +4,8 @@ infrastructure/.terraform.lock.hcl
 **.tfstate
 **.tfstate.backup
 
+# local dev
+local_development/data
 
 #-----------------------------------------------------------------------------------
 # Byte-compiled / optimized / DLL files

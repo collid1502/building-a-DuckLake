@@ -1,0 +1,31 @@
+{
+  "name": "duck-etl-container",
+  "dockerComposeFile": ["../local_development/Docker/docker-compose.yml"],
+  "service": "python-dev",
+  "workspaceFolder": "/home/dev/workspace",
+  "shutdownAction": "stopCompose",
+  "containerEnv": {
+    "USER_EMAIL": "myFakeEmail@hotmail.com"
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "remote.autoForwardPorts": false
+      },
+      "extensions": [
+        "njpwerner.autodocstring",
+        "formulahendry.code-runner",
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens",
+        "esbenp.prettier-vscode",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy",
+        "redhat.vscode-yaml",
+        "vscode-icons-team.vscode-icons",
+        "SolarLiner.linux-themes"
+      ]
+    }
+  },
+  "postCreateCommand": "conda init bash && conda activate duck_etl"
+}

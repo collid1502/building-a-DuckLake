@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: ducklake-postgres
+    environment:
+      POSTGRES_USER: duckLakeAdmin
+      POSTGRES_PASSWORD: duckLakePW
+      POSTGRES_DB: mydatabase
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  python-dev:
+    build:
+      context: ./pythonEnv
+    container_name: ducklake-python
+    depends_on:
+      - postgres
+    volumes:
+      - ../..:/home/dev/workspace:cached
+    working_dir: /home/dev/workspace
+    command: sleep infinity  # Keeps it running for VS Code to attach
+    environment:
+      - PYTHONUNBUFFERED=1
+
+volumes:
+  pg_data:
+

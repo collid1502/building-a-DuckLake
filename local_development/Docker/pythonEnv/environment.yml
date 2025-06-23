@@ -1,0 +1,24 @@
+name: duck_etl
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pytest
+  - pytest-timeout
+  - pytest-order
+  - pytest-sugar
+  - pytest-pythonpath
+  - polars
+  - pandas
+  - pyarrow
+  - requests
+  - pip:
+    - duckdb==1.3.1
+    - sqlmesh
+    - cuallee==0.15.0
+    - sqlframe
+    - psycopg2-binary
+    - boto
+    - pyyaml
