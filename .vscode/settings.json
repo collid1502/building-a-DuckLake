@@ -1,3 +1,4 @@
 {
-    "python.terminal.activateEnvironment": false
+    "python.terminal.activateEnvironment": false,
+    "python.defaultInterpreterPath": "/opt/conda/envs/duck_etl/bin/python"
 }

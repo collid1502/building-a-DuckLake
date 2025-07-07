@@ -10,7 +10,9 @@
   "customizations": {
     "vscode": {
       "settings": {
-        "remote.autoForwardPorts": false
+        "remote.autoForwardPorts": false,
+        "python.defaultInterpreterPath": "/opt/conda/envs/duck_etl/bin/python",
+        "terminal.integrated.defaultProfile.linux": "bash"
       },
       "extensions": [
         "njpwerner.autodocstring",
@@ -26,6 +28,5 @@
         "SolarLiner.linux-themes"
       ]
     }
-  },
-  "postCreateCommand": "conda init bash && conda activate duck_etl"
+  }
 }

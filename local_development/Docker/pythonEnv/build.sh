@@ -1,1 +1,1 @@
-docker build -t ducklake-dev .
+docker build -t ducklake-dev:0.1 .
