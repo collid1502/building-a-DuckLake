@@ -11,7 +11,7 @@ WORKDIR /workspace
 
 # Install common OS packages
 RUN apt-get update && \
-    apt-get install -y curl git zip && \
+    apt-get install -y curl git zip cron && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy in the environment.yml file and build the Conda environment
@@ -39,6 +39,10 @@ USER ${USERNAME}
 RUN echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
     echo "conda activate duck_etl" >> ~/.bashrc && \
     echo ". /opt/conda/etc/profile.d/conda.sh && conda activate duck_etl" >> ~/.profile
+
+# Copy your cron setup script into the image
+COPY --chown=collid:collid setup_cron.sh /home/collid/setup_cron.sh
+RUN chmod +x /home/collid/setup_cron.sh
 
 # Disable auto-activation of base Conda env globally
 USER root

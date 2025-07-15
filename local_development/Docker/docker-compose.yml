@@ -5,8 +5,8 @@ services:
     image: postgres:15
     container_name: ducklake-postgres
     environment:
-      POSTGRES_USER: duckLakeAdmin
-      POSTGRES_PASSWORD: duckLakePW
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
       POSTGRES_DB: mydatabase
     ports:
       - "5432:5432"
@@ -24,8 +24,10 @@ services:
     working_dir: /home/dev/workspace
     command: sleep infinity  # Keeps it running for VS Code to attach
     environment:
-      - PYTHONUNBUFFERED=1
+      PYTHONUNBUFFERED: 1
+      PG_USER: ${PG_USER}
+      PG_PASSWORD: ${PG_PASSWORD}
+      PG_HOST: ${PG_HOST}
 
 volumes:
   pg_data:
-

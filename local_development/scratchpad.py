@@ -1,26 +1,79 @@
+# =============================================
+# This script will use SQL Frame to mock the
+# PySpark API, but backed by DuckDB & DuckLake
+# =============================================
+
 # imports
-import psycopg2
+import duckdb
+import pandas as pd
+from sqlframe.duckdb import DuckDBSession
+from sqlframe.duckdb import functions as F
 
 
-# Connection parameters (match your docker-compose.yml)
-conn = psycopg2.connect(
-    host="postgres",         # Use service name from docker-compose
-    port=5432,
-    dbname="mydatabase",
-    user="duckLakeAdmin",
-    password="duckLakePW"
+# Start by connecting to an "In-Memory" DuckDB connection, and connecting to DuckLake
+# NOTE - build_ducklake.py must have been executed already 
+ducklake_conn = duckdb.connect(database=":memory:")
+# Outside Development, do NOT store passwords in code 
+ducklake_conn.execute("""
+ATTACH 'ducklake:postgres:dbname=ducklake_catalog host=postgres user=duckLakeAdmin password=duckLakePW' AS retail_ducklake 
+(DATA_PATH 'local_development/data/');
+                      
+USE retail_ducklake ;
+""")
+
+# now, with that setup, we can mock the PySpark API, but backed with teh DuckDB in-memory session
+# This allows us to keep the syntax without actually needing Spark under the hood 
+spark = DuckDBSession(conn=ducklake_conn)
+
+# create mock dataframe 
+df_employee = spark.createDataFrame(
+    [
+        {"id": 1, "fname": "Jack", "lname": "Shephard", "age": 37, "store_id": 1},
+        {"id": 2, "fname": "John", "lname": "Locke", "age": 65, "store_id": 2},
+        {"id": 3, "fname": "Kate", "lname": "Austen", "age": 37, "store_id": 3},
+        {"id": 4, "fname": "Claire", "lname": "Littleton", "age": 27, "store_id": 1},
+        {"id": 5, "fname": "Hugo", "lname": "Reyes", "age": 29, "store_id": 3},
+    ]
 )
 
-# Create a cursor
-cur = conn.cursor()
+# create new column - assign each employee a store name based on store_id 
+df_employee_with_store = (
+    df_employee.withColumn(
+        "store_name",
+        F.when(F.col("store_id") == 1, 'London')
+        .when(F.col("store_id") == 2, 'Manchester')
+        .when(F.col("store_id") == 3, 'Cardiff')
+        .otherwise(F.lit(None))
+    )
+)
 
-# Run a simple query
-cur.execute("SELECT version();")
-version = cur.fetchone()
-print(f"PostgreSQL version: {version[0]}")
+# Write data to Bronze Layer in the Retail Ducklake
+df_employee_with_store.write.mode("overwrite").saveAsTable("retail_bronze.store_employees")
 
-# Clean up
-cur.close()
-conn.close()
+# let's read that table back in!
+bronze_employees = spark.read.table("retail_bronze.store_employees")
+bronze_employees.show(truncate=False)
 
-exit()
+
+# can we delete a record from the table? 
+# well, not with PySpark directly, but with the underlying table class from SqlFrame
+remove_manchester = bronze_employees.delete(
+    where=bronze_employees["store_id"] == 2
+)
+# execute the delete
+remove_manchester.execute()
+
+# now show the table again ...
+bronze_employees.show(truncate=False)
+
+# what if we read in the data to another dataframe?
+new_bronze_employees = spark.read.table("retail_bronze.store_employees")
+new_bronze_employees.show(truncate=False)
+
+# we can see that the Manchester Store has indeed been deleted!
+# so, all this has happened on our ducklake
+
+# Close Session
+spark._conn.close()
+
+# end 

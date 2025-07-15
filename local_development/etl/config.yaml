@@ -1,0 +1,40 @@
+gateways:
+
+  retail_dev:
+    connection:
+      type: duckdb
+      catalogs:
+        ducklake:
+          type: ducklake
+          path: ducklake:postgres:dbname=ducklake_catalog host={{ env_var('PG_HOST') }} user={{ env_var('PG_USER') }} password={{ env_var('PG_PASSWORD') }}
+          data_path: ../../local_development/data
+
+    state_connection:
+      type: postgres
+      host: {{ env_var('PG_HOST') }}
+      port: 5432
+      user: {{ env_var('PG_USER') }}
+      password: {{ env_var('PG_PASSWORD') }}
+      database: sqlmesh_state
+
+
+  # retail_prod:
+  #   connection:
+  #     type: duckdb
+  #     database: tutorial_prod.duckdb
+
+  #   state_connection:
+  #     type: duckdb
+  #     database: prod_state.db
+
+default_gateway: retail_dev
+
+model_defaults:
+  dialect: duckdb
+  start: '2025-07-15'
+
+linter:
+  enabled: true
+  rules:
+    - ambiguousorinvalidcolumn
+    - invalidselectstarexpansion

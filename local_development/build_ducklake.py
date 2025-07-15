@@ -2,6 +2,7 @@
 import duckdb as db
 import psycopg2
 import pandas as pd
+import os
 
 
 
@@ -11,14 +12,18 @@ def build():
     """
     # POSTGRES SETUP
     # Connection parameters (match your docker-compose.yml) NOTE - This would never actually be saved in code
+    # access env variables
+    pg_host = os.getenv('PG_HOST')
+    pg_user = os.getenv('PG_USER')
+    pg_password = os.getenv('PG_PASSWORD')
     # outside of mock examples
     # Create the database in a context-managed connection
     POSTGRES_CONN = {
-        "host": "postgres",
+        "host": pg_host,
         "port": 5432,
         "dbname": "mydatabase",  # Connect to a DB that is NOT the one you are dropping
-        "user": "duckLakeAdmin",
-        "password": "duckLakePW" # DO NOT HARD CODE PASSWORD IN ACTUAL SOLUTION
+        "user": pg_user,
+        "password": pg_password # DO NOT HARD CODE PASSWORD IN ACTUAL SOLUTION
     }
     # Manually manage the connection to control autocommit properly
     conn = psycopg2.connect(**POSTGRES_CONN)
@@ -50,8 +55,8 @@ def build():
 
     # create the ducklake, providing details to our postgres host
     # NOTE - this is a demo example, typically, secrets would be used and the connection details NOT stored in code
-    create_ducklake = """
-    ATTACH 'ducklake:postgres:dbname=ducklake_catalog host=postgres user=duckLakeAdmin password=duckLakePW' AS retail_ducklake
+    create_ducklake = f"""
+    ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}' AS retail_ducklake
     (DATA_PATH 'local_development/data/') ;
 
     USE retail_ducklake ;

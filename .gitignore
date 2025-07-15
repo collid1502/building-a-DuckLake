@@ -4,6 +4,12 @@ infrastructure/.terraform.lock.hcl
 **.tfstate
 **.tfstate.backup
 
+# any .env files
+**.env
+
+# log files
+**logs
+
 # local dev
 local_development/data
 
