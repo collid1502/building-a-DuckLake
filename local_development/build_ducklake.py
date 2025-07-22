@@ -38,7 +38,8 @@ def build():
             print("Create new database ...")
             cur.execute("CREATE DATABASE ducklake_catalog;")
             print("New ducklake catalog database created")
-
+    except Exception as e:
+        raise e
     finally:
         conn.close()
 
@@ -57,11 +58,14 @@ def build():
     # NOTE - this is a demo example, typically, secrets would be used and the connection details NOT stored in code
     create_ducklake = f"""
     ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}' AS retail_ducklake
-    (DATA_PATH 'local_development/data/') ;
+    (DATA_PATH '/home/dev/workspace/local_development/data', ENCRYPTED) ;
 
     USE retail_ducklake ;
     """
     con.execute(create_ducklake)
+
+    # set the global parquet compression algorithm used when writing Parquet files
+    con.execute("CALL retail_ducklake.set_option('parquet_compression', 'zstd')")
 
     ## Build Bronze Silver & Gold Layers
     build_medallion = """
