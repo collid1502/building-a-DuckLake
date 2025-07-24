@@ -25,7 +25,9 @@
         "ms-python.debugpy",
         "redhat.vscode-yaml",
         "vscode-icons-team.vscode-icons",
-        "SolarLiner.linux-themes"
+        "SolarLiner.linux-themes",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg"
       ]
     }
   }
