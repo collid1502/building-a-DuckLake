@@ -1,3 +1,4 @@
+# imports
 import pandas as pd
 from faker import Faker
 from faker.providers import DynamicProvider
@@ -37,7 +38,7 @@ def get_transactions(
     seed: Optional[int] = None,
     show_progress: bool = False
 ) -> pd.DataFrame:
-    """Generate fake multi-product transaction data.
+    """Generate fake multi-product transaction data with channel and store_id.
 
     Args:
         start (datetime.date): Start date for transaction timestamps
@@ -75,13 +76,18 @@ def get_transactions(
         num_items = random.randint(1, 5)
         products = random.sample(list(PRODUCT_PRICES.keys()), k=num_items)
 
+        channel = random.choices(["Online", "In-Store"], weights=[0.7, 0.3])[0]
+        store_id = random.randint(1, 10) if channel == "In-Store" else None
+
         for product in products:
             txn_list.append({
                 "transaction_id": transaction_id,
                 "customerID": customer_id,
                 "transaction_TS": transaction_ts,
                 "Product": product,
-                "volume": random.randint(1, 6)
+                "volume": random.randint(1, 6),
+                "channel": channel,
+                "store_id": store_id
             })
 
     df = pd.DataFrame(txn_list)

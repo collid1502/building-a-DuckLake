@@ -26,6 +26,14 @@ cust.head(10)
 txns = con.execute("SELECT * FROM retail_bronze.transactions_src_raw LIMIT 10").fetch_df()
 txns.head(10)
 
+# test stores
+strs = con.execute("SELECT * FROM retail_bronze.stores_src_raw LIMIT 10").fetch_df()
+strs.head(10)
+
+# products
+prd = con.execute("SELECT * FROM retail_bronze.products_src_raw LIMIT 20").fetch_df()
+prd.head(20)
 
 # close connection
 con.close()
+exit()

@@ -1,9 +1,10 @@
-# use of the faker package to generate fake customer data
+# imports
 import pandas as pd
 import random
 from faker import Faker
 from faker.providers import DynamicProvider
 import datetime
+from tqdm import tqdm
 
 
 def generate_base_customers(seed: int = 12345, num_customers: int = 1000) -> pd.DataFrame:
@@ -16,15 +17,15 @@ def generate_base_customers(seed: int = 12345, num_customers: int = 1000) -> pd.
     professions_provider = DynamicProvider(
         provider_name="profession",
         elements=[
-            "Engineer","Graphic Designer","Architect","Civil engineer","Software Developer"
-            ,"Laboratory Technician","Mechanical engineer","Scientist","Veterinarian","Artist"
-            ,"Bricklayer","Producers and Directors","Plasterer","Nurse","Roofer","Musician","Social Worker"
-            ,"Physiotherapist","Health professional","Teacher","Radiographer","Paramedic","Physician","Welder"
-            ,"Archaeologist","Association football manager","Technician","Electrician","Engineering technician"
-            ,"Accountant","Painter and decorator","Librarian","Private investigator","Pharmacy Technician"
-            ,"Technology specialist","Quantity surveyor","Air traffic controller","Financial Manager"
-            ,"Official","Chef","Plumber","Aviator","Broker","Police officer","Designer","Optician"
-            ,"Adviser","Trader","Consultant","Chartered Surveyor","Pipefitter"
+            "Engineer", "Graphic Designer", "Architect", "Civil engineer", "Software Developer",
+            "Laboratory Technician", "Mechanical engineer", "Scientist", "Veterinarian", "Artist",
+            "Bricklayer", "Producers and Directors", "Plasterer", "Nurse", "Roofer", "Musician", "Social Worker",
+            "Physiotherapist", "Health professional", "Teacher", "Radiographer", "Paramedic", "Physician", "Welder",
+            "Archaeologist", "Association football manager", "Technician", "Electrician", "Engineering technician",
+            "Accountant", "Painter and decorator", "Librarian", "Private investigator", "Pharmacy Technician",
+            "Technology specialist", "Quantity surveyor", "Air traffic controller", "Financial Manager",
+            "Official", "Chef", "Plumber", "Aviator", "Broker", "Police officer", "Designer", "Optician",
+            "Adviser", "Trader", "Consultant", "Chartered Surveyor", "Pipefitter"
         ]
     )
     fake.add_provider(professions_provider)
@@ -35,7 +36,7 @@ def generate_base_customers(seed: int = 12345, num_customers: int = 1000) -> pd.
     joined_end = datetime.date(2024, 12, 31)
 
     customers = []
-    for cid in range(10000, 10000 + num_customers):
+    for cid in tqdm(range(10000, 10000 + num_customers), desc="Generating customers"):
         customers.append({
             'customerID': cid,
             'firstName': fake.first_name(),
@@ -51,26 +52,25 @@ def generate_base_customers(seed: int = 12345, num_customers: int = 1000) -> pd.
     return pd.DataFrame(customers)
 
 
-def randomly_update_customers(df: pd.DataFrame, update_rate: float = 0.05, seed: int = None) -> pd.DataFrame: # type: ignore
+def randomly_update_customers(df: pd.DataFrame, update_rate: float = 0.05, seed: int = None) -> pd.DataFrame:
     """Randomly update fields for a small subset of customers."""
     fake = Faker('en_GB')
     if seed is not None:
         Faker.seed(seed)
         random.seed(seed)
 
-    # Same provider for consistency
     professions_provider = DynamicProvider(
         provider_name="profession",
         elements=[
-            "Engineer","Graphic Designer","Architect","Civil engineer","Software Developer"
-            ,"Laboratory Technician","Mechanical engineer","Scientist","Veterinarian","Artist"
-            ,"Bricklayer","Producers and Directors","Plasterer","Nurse","Roofer","Musician","Social Worker"
-            ,"Physiotherapist","Health professional","Teacher","Radiographer","Paramedic","Physician","Welder"
-            ,"Archaeologist","Association football manager","Technician","Electrician","Engineering technician"
-            ,"Accountant","Painter and decorator","Librarian","Private investigator","Pharmacy Technician"
-            ,"Technology specialist","Quantity surveyor","Air traffic controller","Financial Manager"
-            ,"Official","Chef","Plumber","Aviator","Broker","Police officer","Designer","Optician"
-            ,"Adviser","Trader","Consultant","Chartered Surveyor","Pipefitter"
+            "Engineer", "Graphic Designer", "Architect", "Civil engineer", "Software Developer",
+            "Laboratory Technician", "Mechanical engineer", "Scientist", "Veterinarian", "Artist",
+            "Bricklayer", "Producers and Directors", "Plasterer", "Nurse", "Roofer", "Musician", "Social Worker",
+            "Physiotherapist", "Health professional", "Teacher", "Radiographer", "Paramedic", "Physician", "Welder",
+            "Archaeologist", "Association football manager", "Technician", "Electrician", "Engineering technician",
+            "Accountant", "Painter and decorator", "Librarian", "Private investigator", "Pharmacy Technician",
+            "Technology specialist", "Quantity surveyor", "Air traffic controller", "Financial Manager",
+            "Official", "Chef", "Plumber", "Aviator", "Broker", "Police officer", "Designer", "Optician",
+            "Adviser", "Trader", "Consultant", "Chartered Surveyor", "Pipefitter"
         ]
     )
     fake.add_provider(professions_provider)
@@ -79,7 +79,7 @@ def randomly_update_customers(df: pd.DataFrame, update_rate: float = 0.05, seed:
     num_to_update = int(len(df) * update_rate)
     update_ids = random.sample(list(df['customerID']), num_to_update)
 
-    for cid in update_ids:
+    for cid in tqdm(update_ids, desc="Applying customer updates"):
         idx = df_updated[df_updated['customerID'] == cid].index[0]
         df_updated.at[idx, 'profession'] = fake.profession()
         df_updated.at[idx, 'postcode'] = fake.postcode()
@@ -89,7 +89,7 @@ def randomly_update_customers(df: pd.DataFrame, update_rate: float = 0.05, seed:
 
 
 if __name__ == "__main__":
-    base_df = generate_base_customers(seed=101, num_customers=80000)
+    base_df = generate_base_customers(seed=101, num_customers=10000)
     updated_df = randomly_update_customers(base_df, update_rate=0.05)
 
     # Display a few updated customers
