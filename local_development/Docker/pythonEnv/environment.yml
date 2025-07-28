@@ -20,6 +20,7 @@ dependencies:
     - cuallee==0.15.0
     - sqlframe
     - psycopg2-binary
+    - tqdm
     - boto
     - pyyaml
     - faker

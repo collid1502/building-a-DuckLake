@@ -15,24 +15,14 @@ import pandas as pd
 from sqlframe.duckdb import DuckDBSession
 from sqlframe.duckdb import functions as F
 
-from ETL.utils.data_sourcing.customers import generate_base_customers, randomly_update_customers
-
-# ============================================================================================================
-# for this section, i'm going to mock some data as if it came from some database or API
-# so that we have a flow of data we can use in our project
-def get_raw_customer_data() -> pd.DataFrame:
-    base_df = generate_base_customers(seed=101, num_customers=10000) # leave seed as static
-    customer_df = randomly_update_customers(base_df, update_rate=0.05) # customer data now in memory
-    dt = (datetime.date.today()).strftime('%Y-%m-%d')
-    customer_df['extract_date'] = dt
-    return customer_df
+from ETL.utils.data_sourcing.transactions import get_transactions
 
 
 # =============================================================================================================
 # collect env variables for connection to DuckLake as ETL admin
 def etl():
     """
-    Process the ETL stage of loading raw customer data to bronze layer of DuckLake.
+    Process the ETL stage of loading raw transaction data to bronze layer of DuckLake.
     Automatically manages connection context to ensure clean closure.
     """
     pg_host = os.getenv('PG_HOST')
@@ -40,8 +30,16 @@ def etl():
     pg_password = os.getenv('PG_PASSWORD')
 
     # collect customer_data first (so it's available even if we need to infer schema)
-    print("generating fake customer data ...")
-    customer_df = get_raw_customer_data()
+    print("generating fake transaction data ...")
+    today = datetime.date.today()
+    tomorrow = today + datetime.timedelta(days=1)
+    txns_df = get_transactions(
+        start=today,
+        end=tomorrow,
+        num_transactions=5_000,
+        show_progress=True
+    )
+    txns_df['extract_date'] = datetime.date.today().strftime("%Y-%m-%d")
 
     # DuckDB connection with context manager for auto-close
     with duckdb.connect(database=":memory:") as con:
@@ -51,30 +49,30 @@ def etl():
         USE retail_ducklake ;
         """)
 
-        # create table if not exists (based on schema of customer_df)
+        # create table if not exists (based on schema of df)
         try:
-            con.execute("SELECT 1 FROM retail_bronze.customer_src_raw ;")
+            con.execute("SELECT 1 FROM retail_bronze.transactions_src_raw ;")
         except:
-            print("Table: `retail_bronze.customer_src_raw` does not yet exist. Creating ...")
-            con.register("customer_df", customer_df)  # register pandas DataFrame
+            print("Table: `retail_bronze.transactions_src_raw` does not yet exist. Creating ...")
+            con.register("txns_df", txns_df)  # register pandas DataFrame
             con.execute("""
-            CREATE TABLE retail_bronze.customer_src_raw AS SELECT * FROM customer_df LIMIT 0 ;
-            ALTER TABLE retail_bronze.customer_src_raw SET PARTITIONED BY (extract_date) ;
+            CREATE TABLE retail_bronze.transactions_src_raw AS SELECT * FROM txns_df LIMIT 0 ;
+            ALTER TABLE retail_bronze.transactions_src_raw SET PARTITIONED BY (extract_date) ;
             """)
-            print("Table: `retail_bronze.customer_src_raw` created")
+            print("Table: `retail_bronze.transactions_src_raw` created")
         # Start PySpark-like session
         spark = DuckDBSession(conn=con)
 
         # clear existing extract_date if exists
         print("Clearing existing partition of extract date if exists ...")
-        trgt_tbl = spark.table("retail_bronze.customer_src_raw")
+        trgt_tbl = spark.table("retail_bronze.transactions_src_raw")
         dt = (datetime.date.today()).strftime('%Y-%m-%d')
         trgt_tbl.delete(where=trgt_tbl["extract_date"] == dt).execute()
 
         # create spark dataframe and insert
-        print("Writing latest extract date of customer data to target table ...")
-        cust_df = spark.createDataFrame(customer_df)
-        cust_df.write.mode("append").insertInto("retail_bronze.customer_src_raw")
+        print("Writing latest extract date of transactions data to target table ...")
+        transactions_df = spark.createDataFrame(txns_df.to_dict(orient='records'))
+        transactions_df.write.mode("append").insertInto("retail_bronze.transactions_src_raw")
 
         # clean up the context (optional inside `with`, but for completeness)
         con.execute("USE memory ;")
@@ -82,7 +80,7 @@ def etl():
 
 
 if __name__ == "__main__":
-    print("Running ETL process for BRONZE -- Raw Customer Data ...")
+    print("Running ETL process for BRONZE -- Raw Transaction Data ...")
     etl() # process ETL
-    print("Data Load to `retail_bronze.customer_src_raw` completed")
+    print("Data Load to `retail_bronze.transactions_src_raw` completed")
     exit()
