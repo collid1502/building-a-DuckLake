@@ -9,9 +9,16 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /workspace
 
-# Install common OS packages
+# Install common OS packages + DuckDB CLI dependencies
 RUN apt-get update && \
-    apt-get install -y curl git zip cron && \
+    apt-get install -y curl git zip cron wget unzip && \
+    # Install DuckDB CLI
+    wget https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip && \
+    unzip duckdb_cli-linux-amd64.zip && \
+    chmod +x duckdb && \
+    mv duckdb /usr/local/bin/ && \
+    rm duckdb_cli-linux-amd64.zip && \
+    # Clean up
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy in the environment.yml file and build the Conda environment

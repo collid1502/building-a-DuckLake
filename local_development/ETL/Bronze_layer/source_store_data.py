@@ -1,21 +1,48 @@
-# =============================================
-# This script will use SQL Frame to mock the
-# PySpark API, but backed by DuckDB & DuckLake
-# =============================================
-
 # imports
 import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parents[2]))  # adjust depth to reach root of Project Root
-
 import os
 import duckdb
 import datetime
 import pandas as pd
-from sqlframe.duckdb import DuckDBSession
-from sqlframe.duckdb import functions as F
+from faker import Faker
+import random
+from typing import Optional
+from tqdm import tqdm
 
-from ETL.utils.data_sourcing.stores import get_stores
+
+UK_CITIES = [
+    "London", "Birmingham", "Manchester", "Glasgow", "Liverpool",
+    "Leeds", "Sheffield", "Bristol", "Edinburgh", "Newcastle"
+]
+
+
+def get_stores(
+    seed: Optional[int] = 100,
+    show_progress: bool = False
+) -> pd.DataFrame:
+    """Generate a fixed set of 10 fake retail stores using UK city names.
+
+    Args:
+        seed (Optional[int]): Random seed for reproducibility
+        show_progress (bool): Whether to show a progress bar
+
+    Returns:
+        pd.DataFrame: Store metadata
+    """
+    fake = Faker("en_GB")
+    Faker.seed(seed)
+    random.seed(seed)
+
+    rows = []
+    iterator = tqdm(enumerate(UK_CITIES, start=1), total=10, desc="Generating stores") if show_progress else enumerate(UK_CITIES, start=1)
+    for store_id, city in iterator:
+        rows.append({
+            "store_id": store_id,
+            "store_name": f"{city} Store",
+            "manager": fake.name(),
+            "opened_date": fake.date_between(start_date='-10y', end_date='-1y')
+        })
+    return pd.DataFrame(rows)
 
 
 # =============================================================================================================
@@ -56,19 +83,15 @@ def etl():
             ALTER TABLE retail_bronze.stores_src_raw SET PARTITIONED BY (extract_date) ;
             """)
             print("Table: `retail_bronze.stores_src_raw` created")
-        # Start PySpark-like session
-        spark = DuckDBSession(conn=con)
-
-        # clear existing extract_date if exists
-        print("Clearing existing partition of extract date if exists ...")
-        trgt_tbl = spark.table("retail_bronze.stores_src_raw")
+        
+        # execute write of data to table
+        print("load stores data to bronze layer")
         dt = (datetime.date.today()).strftime('%Y-%m-%d')
-        trgt_tbl.delete(where=trgt_tbl["extract_date"] == dt).execute()
-
-        # create spark dataframe and insert
-        print("Writing latest extract date of stores data to target table ...")
-        str_df = spark.createDataFrame(stores_df.to_dict(orient='records'))
-        str_df.write.mode("append").insertInto("retail_bronze.stores_src_raw")
+        con.execute(f"""
+        DELETE FROM retail_bronze.stores_src_raw WHERE extract_date = '{dt}' ;
+        INSERT INTO retail_bronze.stores_src_raw SELECT * FROM stores_df ;
+        """)
+        print("Data loaded")       
 
         # clean up the context (optional inside `with`, but for completeness)
         con.execute("USE memory ;")

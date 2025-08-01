@@ -12,5 +12,6 @@
             "username": "duckLakeAdmin",
             "password": "duckLakePW"
         }
-    ]
+    ],
+    "sqltools.useNodeRuntime": true
 }

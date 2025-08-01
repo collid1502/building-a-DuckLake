@@ -13,6 +13,8 @@ infrastructure/.terraform.lock.hcl
 # local dev
 local_development/data
 
+**qurying_ducklake.sql
+
 #-----------------------------------------------------------------------------------
 # Byte-compiled / optimized / DLL files
 __pycache__/

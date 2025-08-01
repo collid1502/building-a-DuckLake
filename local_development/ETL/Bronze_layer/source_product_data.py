@@ -1,21 +1,92 @@
-# =============================================
-# This script will use SQL Frame to mock the
-# PySpark API, but backed by DuckDB & DuckLake
-# =============================================
-
 # imports
 import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parents[2]))  # adjust depth to reach root of Project Root
-
 import os
 import duckdb
-import datetime
 import pandas as pd
-from sqlframe.duckdb import DuckDBSession
-from sqlframe.duckdb import functions as F
+from faker import Faker
+import datetime
+import random
+from typing import Optional
+from tqdm import tqdm
 
-from ETL.utils.data_sourcing.products import get_product_catalog
+# Constants
+PRODUCT_PRICES = {
+    "Laptop": 399.99,
+    "Desktop": 599.99,
+    "Monitor": 120,
+    "Keyboard": 35,
+    "Mouse": 8,
+    "Docking Station": 70,
+    "HDMI Cable": 14.98,
+    "Office Chair Premium": 250,
+    "Office Chair Standard": 160,
+    "Desk": 400,
+    "Laptop Bag": 55,
+    "Laptop Stand": 12.99,
+    "Extension Cable": 4.99,
+    "USB Flash Drive 16gb": 3.99,
+    "Tablet": 115,
+    "Printer": 70,
+    "Projector": 300,
+    "WiFi Range Extender": 30,
+}
+
+
+def get_product_catalog(
+    product_prices: dict = PRODUCT_PRICES,
+    seed: Optional[int] = 123,
+    base_product_id: int = 1000,
+    show_progress: bool = False
+) -> pd.DataFrame:
+    """Generate a product catalog from a product price map.
+
+    Args:
+        product_prices (dict): Mapping of product name to price
+        seed (Optional[int]): Seed for reproducibility
+        base_product_id (int): Starting product ID number
+        show_progress (bool): Whether to show progress bar
+
+    Returns:
+        pd.DataFrame: Product catalog
+    """
+    fake = Faker()
+    Faker.seed(seed)
+    random.seed(seed)
+
+    # Category assignment map
+    category_map = {
+        "Laptop": "Electronics",
+        "Desktop": "Electronics",
+        "Monitor": "Electronics",
+        "Keyboard": "Accessories",
+        "Mouse": "Accessories",
+        "Docking Station": "Accessories",
+        "HDMI Cable": "Accessories",
+        "Office Chair Premium": "Furniture",
+        "Office Chair Standard": "Furniture",
+        "Desk": "Furniture",
+        "Laptop Bag": "Accessories",
+        "Laptop Stand": "Accessories",
+        "Extension Cable": "Accessories",
+        "USB Flash Drive 16gb": "Storage",
+        "Tablet": "Electronics",
+        "Printer": "Electronics",
+        "Projector": "Electronics",
+        "WiFi Range Extender": "Networking"
+    }
+
+    rows = []
+    product_names = list(product_prices.keys())
+    iterator = tqdm(enumerate(product_names, start=base_product_id), total=len(product_names), desc="Generating product catalog") if show_progress else enumerate(product_names, start=base_product_id)
+    for product_id, product_name in iterator:
+        rows.append({
+            "product_id": product_id,
+            "product_name": product_name,
+            "category": category_map.get(product_name, "General"),
+            "price": product_prices[product_name],
+            "launch_date": fake.date_between(start_date='-5y', end_date='today')
+        })
+    return pd.DataFrame(rows)
 
 
 # =============================================================================================================
@@ -53,19 +124,15 @@ def etl():
             ALTER TABLE retail_bronze.products_src_raw SET PARTITIONED BY (extract_date) ;
             """)
             print("Table: `retail_bronze.products_src_raw` created")
-        # Start PySpark-like session
-        spark = DuckDBSession(conn=con)
-
-        # clear existing extract_date if exists
-        print("Clearing existing partition of extract date if exists ...")
-        trgt_tbl = spark.table("retail_bronze.products_src_raw")
+        
+        # execute write of data to table
+        print("load product data to bronze layer")
         dt = (datetime.date.today()).strftime('%Y-%m-%d')
-        trgt_tbl.delete(where=trgt_tbl["extract_date"] == dt).execute()
-
-        # create spark dataframe and insert
-        print("Writing latest extract date of products data to target table ...")
-        prd_df = spark.createDataFrame(products_df.to_dict(orient='records'))
-        prd_df.write.mode("append").insertInto("retail_bronze.products_src_raw")
+        con.execute(f"""
+        DELETE FROM retail_bronze.products_src_raw WHERE extract_date = '{dt}' ;
+        INSERT INTO retail_bronze.products_src_raw SELECT * FROM products_df ;
+        """)
+        print("Data loaded")
 
         # clean up the context (optional inside `with`, but for completeness)
         con.execute("USE memory ;")
