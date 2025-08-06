@@ -7,6 +7,7 @@ from faker import Faker
 from faker.providers import DynamicProvider
 import datetime
 from tqdm import tqdm
+import argparse
 
 
 def generate_base_customers(seed: int = 12345, num_customers: int = 1000) -> pd.DataFrame:
@@ -93,17 +94,17 @@ def randomly_update_customers(df: pd.DataFrame, update_rate: float = 0.05, seed:
 # ============================================================================================================
 # for this section, i'm going to mock some data as if it came from some database or API
 # so that we have a flow of data we can use in our project
-def get_raw_customer_data() -> pd.DataFrame:
+def get_raw_customer_data(extract_date: str = None) -> pd.DataFrame:
     base_df = generate_base_customers(seed=101, num_customers=10000) # leave seed as static
     customer_df = randomly_update_customers(base_df, update_rate=0.05) # customer data now in memory
-    dt = (datetime.date.today()).strftime('%Y-%m-%d')
+    dt = extract_date or (datetime.date.today()).strftime('%Y-%m-%d')
     customer_df['extract_date'] = dt
     return customer_df
 
 
 # =============================================================================================================
 # collect env variables for connection to DuckLake as ETL admin
-def etl():
+def etl(extract_date: str = None):
     """
     Process the ETL stage of loading raw customer data to bronze layer of DuckLake.
     Automatically manages connection context to ensure clean closure.
@@ -114,7 +115,7 @@ def etl():
 
     # collect customer_data first (so it's available even if we need to infer schema)
     print("generating fake customer data ...")
-    customer_df = get_raw_customer_data()
+    customer_df = get_raw_customer_data(extract_date=extract_date)
 
     # DuckDB connection with context manager for auto-close
     with duckdb.connect(database=":memory:") as con:
@@ -127,16 +128,10 @@ def etl():
         """)
 
         # create table if not exists (based on schema of customer_df)
-        try:
-            con.execute("SELECT 1 FROM retail_bronze.customer_src_raw LIMIT 1;")
-        except:
-            print("Table: `retail_bronze.customer_src_raw` does not yet exist. Creating ...")
-            con.register("customer_df", customer_df)  # register pandas DataFrame
-            con.execute("""
-            CREATE TABLE retail_bronze.customer_src_raw AS SELECT * FROM customer_df LIMIT 0 ;
-            ALTER TABLE retail_bronze.customer_src_raw SET PARTITIONED BY (extract_date) ;
-            """)
-            print("Table: `retail_bronze.customer_src_raw` created")
+        con.register("customer_df", customer_df)  # register pandas DataFrame
+        con.execute("""CREATE TABLE IF NOT EXISTS retail_bronze.customer_src_raw AS SELECT * FROM customer_df LIMIT 0""")
+        print("IF Table: `retail_bronze.customer_src_raw` does not yet exist. Creating ...")
+        print("Table: `retail_bronze.customer_src_raw` created")
         
         # execute write of data to table
         print("load customer data to bronze layer")
@@ -153,7 +148,11 @@ def etl():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run ETL process for raw customer data")
+    parser.add_argument("--extract-date", type=str, help="Optional extract date in YYYY-MM-DD format")
+    args = parser.parse_args()
+    extract_date = args.extract_date
+
     print("Running ETL process for BRONZE -- Raw Customer Data ...")
-    etl() # process ETL
+    etl(extract_date=extract_date) # process ETL
     print("Data Load to `retail_bronze.customer_src_raw` completed")
-    exit()

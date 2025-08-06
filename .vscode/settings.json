@@ -1,17 +1,4 @@
 {
     "python.terminal.activateEnvironment": false,
-    "python.defaultInterpreterPath": "/opt/conda/envs/duck_etl/bin/python",
-    "sqltools.connections": [
-        {
-            "previewLimit": 50,
-            "server": "postgres",
-            "port": 5432,
-            "driver": "PostgreSQL",
-            "name": "ducklake_meta",
-            "database": "ducklake_catalog",
-            "username": "duckLakeAdmin",
-            "password": "duckLakePW"
-        }
-    ],
-    "sqltools.useNodeRuntime": true
+    "python.defaultInterpreterPath": "/opt/conda/envs/duck_etl/bin/python"
 }

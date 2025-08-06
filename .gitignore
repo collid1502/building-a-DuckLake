@@ -11,7 +11,7 @@ infrastructure/.terraform.lock.hcl
 **logs
 
 # local dev
-local_development/data
+**data
 
 **ducklake_queries.sql
 

@@ -51,14 +51,14 @@ def build():
     con = db.connect(database=':memory:')
 
     # install ducklkae extension
-    con.execute("INSTALL ducklake;")
+    con.execute("FORCE INSTALL ducklake FROM core_nightly;") # allows complex UPSERTS
     con.execute("INSTALL postgres;") # as we will be using postgres as the catalog backing
 
     # create the ducklake, providing details to our postgres host
     # NOTE - this is a demo example, typically, secrets would be used and the connection details NOT stored in code
     create_ducklake = f"""
     ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}' AS retail_ducklake
-    (DATA_PATH '/home/dev/workspace/local_development/data', ENCRYPTED) ;
+    (DATA_PATH '/home/dev/workspace/ETL/data', ENCRYPTED) ;
 
     USE retail_ducklake ;
     """
