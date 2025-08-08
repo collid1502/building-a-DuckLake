@@ -30,6 +30,12 @@ echo "End of Bronze Layer Build"
 echo "======================================================="
 
 # Silver Layer
+echo "Build silver layer ..."
+
+$PYTHON ./Silver_layer/dim_customer.py
+
+echo 
+echo "End of Silver Layer Build"
 
 echo
 echo "All scripts completed using duck_etl environment."

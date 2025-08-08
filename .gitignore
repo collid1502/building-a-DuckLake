@@ -14,6 +14,7 @@ infrastructure/.terraform.lock.hcl
 **data
 
 **ducklake_queries.sql
+**ducklake_dbeaver_jdbc.sql
 
 #-----------------------------------------------------------------------------------
 # Byte-compiled / optimized / DLL files

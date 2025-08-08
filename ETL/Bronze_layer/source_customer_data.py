@@ -123,7 +123,7 @@ def etl(extract_date: str = None):
         con = duckdb.connect(database=":memory:")
         print("connecting to ducklake ...")
         con.execute(f"""
-        ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}' AS retail_ducklake ;
+        ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}' AS retail_ducklake (CREATE_IF_NOT_EXISTS false);
         USE retail_ducklake ;
         """)
 
