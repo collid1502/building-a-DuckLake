@@ -24,3 +24,5 @@ dependencies:
     - boto
     - pyyaml
     - faker
+    - jupysql
+    - duckdb-engine
