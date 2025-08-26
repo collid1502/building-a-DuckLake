@@ -8,7 +8,7 @@ import os
 
 def build():
     """
-    Builds a simple duck-lake with medallion setup
+    Builds a simple duck-lake with medallion setup:
     """
     # POSTGRES SETUP
     # Connection parameters (match your docker-compose.yml) NOTE - This would never actually be saved in code

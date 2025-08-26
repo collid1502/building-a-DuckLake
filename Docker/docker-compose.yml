@@ -27,7 +27,7 @@ services:
       PYTHONUNBUFFERED: 1
       PG_USER: ${PG_USER}
       PG_PASSWORD: ${PG_PASSWORD}
-      PG_HOST: postgres
+      PG_HOST: ${PG_HOST}
 
 volumes:
   pg_data:
