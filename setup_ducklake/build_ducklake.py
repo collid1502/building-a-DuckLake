@@ -8,7 +8,7 @@ import os
 
 def build():
     """
-    Builds a simple duck-lake with medallion setup
+    Builds a simple duck-lake with medallion setup:
     """
     # POSTGRES SETUP
     # Connection parameters (match your docker-compose.yml) NOTE - This would never actually be saved in code
@@ -55,14 +55,27 @@ def build():
     con.execute("INSTALL postgres;") # as we will be using postgres as the catalog backing
 
     # create the ducklake, providing details to our postgres host
-    # NOTE - this is a demo example, typically, secrets would be used and the connection details NOT stored in code
     create_ducklake = f"""
     ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}' AS retail_ducklake
-    (DATA_PATH '/home/dev/workspace/local_development/data', ENCRYPTED) ;
+    (DATA_PATH '/home/dev/workspace/setup_ducklake/data', ENCRYPTED) ;
 
     USE retail_ducklake ;
     """
     con.execute(create_ducklake)
+
+    # create a secret for the Postgres Metadata Connection
+    pg_secret = f"""
+    DROP PERSISTENT SECRET pg_ducklake ;
+    CREATE PERSISTENT SECRET pg_ducklake (
+        TYPE postgres,
+        HOST '{pg_host}',
+        PORT 5432,
+        DATABASE ducklake_catalog,
+        USER '{pg_user}',
+        PASSWORD '{pg_password}'
+    );
+    """
+    con.execute(pg_secret)
 
     # set the global parquet compression algorithm used when writing Parquet files
     con.execute("CALL retail_ducklake.set_option('parquet_compression', 'zstd')")

@@ -1,5 +1,6 @@
 # imports
 import sys
+import argparse
 import os
 import duckdb
 import datetime
@@ -34,7 +35,11 @@ def get_stores(
     random.seed(seed)
 
     rows = []
-    iterator = tqdm(enumerate(UK_CITIES, start=1), total=10, desc="Generating stores") if show_progress else enumerate(UK_CITIES, start=1)
+    iterator = tqdm(
+        enumerate(UK_CITIES, start=1),
+        total=10, 
+        desc="Generating stores"
+    ) if show_progress else enumerate(UK_CITIES, start=1)
     for store_id, city in iterator:
         rows.append({
             "store_id": store_id,
@@ -47,7 +52,7 @@ def get_stores(
 
 # =============================================================================================================
 # collect env variables for connection to DuckLake as ETL admin
-def etl():
+def etl(extract_date: str):
     """
     Process the ETL stage of loading raw store data to bronze layer of DuckLake.
     Automatically manages connection context to ensure clean closure.
@@ -62,13 +67,15 @@ def etl():
         seed=123,
         show_progress=True
     )
-    stores_df['extract_date'] = datetime.date.today().strftime("%Y-%m-%d")
+    stores_df['extract_date'] = extract_date
 
     # DuckDB connection with context manager for auto-close
     with duckdb.connect(database=":memory:") as con:
         print("connecting to ducklake ...")
         con.execute(f"""
-        ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}' AS retail_ducklake ;
+        ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}'
+        AS retail_ducklake (CREATE_IF_NOT_EXISTS false);
+        
         USE retail_ducklake ;
         """)
 
@@ -86,9 +93,8 @@ def etl():
         
         # execute write of data to table
         print("load stores data to bronze layer")
-        dt = (datetime.date.today()).strftime('%Y-%m-%d')
         con.execute(f"""
-        DELETE FROM retail_bronze.stores_src_raw WHERE extract_date = '{dt}' ;
+        DELETE FROM retail_bronze.stores_src_raw WHERE extract_date = '{extract_date}' ;
         INSERT INTO retail_bronze.stores_src_raw SELECT * FROM stores_df ;
         """)
         print("Data loaded")       
@@ -99,7 +105,10 @@ def etl():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run ETL process for raw data")
+    parser.add_argument("--extract-date", type=str, help="Extract date in YYYY-MM-DD format")
+    args = parser.parse_args()
+    extract_date = args.extract_date
     print("Running ETL process for BRONZE -- Raw Stores Data ...")
-    etl() # process ETL
+    etl(extract_date=extract_date) # process ETL
     print("Data Load to `retail_bronze.stores_src_raw` completed")
-    exit()

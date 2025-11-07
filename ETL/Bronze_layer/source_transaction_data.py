@@ -1,5 +1,6 @@
 # imports
 import sys
+import argparse
 import os
 import duckdb
 import pandas as pd
@@ -104,7 +105,7 @@ def get_transactions(
 
 # =============================================================================================================
 # collect env variables for connection to DuckLake as ETL admin
-def etl():
+def etl(extract_date: str):
     """
     Process the ETL stage of loading raw transaction data to bronze layer of DuckLake.
     Automatically manages connection context to ensure clean closure.
@@ -115,21 +116,26 @@ def etl():
 
     # collect customer_data first (so it's available even if we need to infer schema)
     print("generating fake transaction data ...")
-    today = datetime.date.today()
-    tomorrow = today + datetime.timedelta(days=1)
+
+    # Parse extract-date into a date object
+    tomorrow = datetime.datetime.strptime(extract_date, "%Y-%m-%d").date()
+    today = tomorrow - datetime.timedelta(days=1)
+
     txns_df = get_transactions(
         start=today,
         end=tomorrow,
         num_transactions=5_000,
         show_progress=True
     )
-    txns_df['extract_date'] = datetime.date.today().strftime("%Y-%m-%d")
+    txns_df['extract_date'] = today.strftime("%Y-%m-%d")
 
     # DuckDB connection with context manager for auto-close
     with duckdb.connect(database=":memory:") as con:
         print("connecting to ducklake ...")
         con.execute(f"""
-        ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}' AS retail_ducklake ;
+        ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}'
+        AS retail_ducklake (CREATE_IF_NOT_EXISTS false);
+        
         USE retail_ducklake ;
         """)
 
@@ -147,7 +153,7 @@ def etl():
 
         # execute write of data to table
         print("load txn data to bronze layer")
-        dt = (datetime.date.today()).strftime('%Y-%m-%d')
+        dt = today.strftime('%Y-%m-%d')
         con.execute(f"""
         DELETE FROM retail_bronze.transactions_src_raw WHERE extract_date = '{dt}' ;
         INSERT INTO retail_bronze.transactions_src_raw SELECT * FROM txns_df ;
@@ -160,7 +166,10 @@ def etl():
 
 
 if __name__ == "__main__":
-    print("Running ETL process for BRONZE -- Raw Transaction Data ...")
-    etl() # process ETL
+    parser = argparse.ArgumentParser(description="Run ETL process for raw data")
+    parser.add_argument("--extract-date", type=str, help="Extract date in YYYY-MM-DD format")
+    args = parser.parse_args()
+    extract_date = args.extract_date
+    print("Running ETL process for BRONZE -- Raw Transactions Data ...")
+    etl(extract_date=extract_date) # process ETL
     print("Data Load to `retail_bronze.transactions_src_raw` completed")
-    exit()

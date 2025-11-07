@@ -1,6 +1,6 @@
 {
   "name": "duck-etl-container",
-  "dockerComposeFile": ["../local_development/Docker/docker-compose.yml"],
+  "dockerComposeFile": ["../Docker/docker-compose.yml"],
   "service": "python-dev",
   "workspaceFolder": "/home/dev/workspace",
   "shutdownAction": "stopCompose",

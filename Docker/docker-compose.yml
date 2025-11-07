@@ -20,7 +20,7 @@ services:
     depends_on:
       - postgres
     volumes:
-      - ../..:/home/dev/workspace:cached
+      - ../:/home/dev/workspace:cached
     working_dir: /home/dev/workspace
     command: sleep infinity  # Keeps it running for VS Code to attach
     environment:

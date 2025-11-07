@@ -15,12 +15,15 @@ dependencies:
   - pyarrow
   - requests
   - pip:
-    - duckdb==1.3.1
+    - duckdb==1.4.1
     - sqlmesh
-    - cuallee==0.15.0
+    - cuallee==0.15.3
     - sqlframe
+    - ibis-framework[duckdb]
     - psycopg2-binary
     - tqdm
     - boto
     - pyyaml
     - faker
+    - jupysql
+    - duckdb-engine
