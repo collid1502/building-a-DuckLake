@@ -1,5 +1,6 @@
 # imports
 import sys
+import argparse
 import os
 import duckdb
 import pandas as pd
@@ -77,7 +78,12 @@ def get_product_catalog(
 
     rows = []
     product_names = list(product_prices.keys())
-    iterator = tqdm(enumerate(product_names, start=base_product_id), total=len(product_names), desc="Generating product catalog") if show_progress else enumerate(product_names, start=base_product_id)
+    iterator = tqdm(
+        enumerate(product_names, start=base_product_id),
+        total=len(product_names),
+        desc="Generating product catalog"
+    ) if show_progress else enumerate(product_names, start=base_product_id)
+
     for product_id, product_name in iterator:
         rows.append({
             "product_id": product_id,
@@ -91,7 +97,7 @@ def get_product_catalog(
 
 # =============================================================================================================
 # collect env variables for connection to DuckLake as ETL admin
-def etl():
+def etl(extract_date: str):
     """
     Process the ETL stage of loading raw product data to bronze layer of DuckLake.
     Automatically manages connection context to ensure clean closure.
@@ -103,13 +109,15 @@ def etl():
     # collect customer_data first (so it's available even if we need to infer schema)
     print("generating fake product data ...")
     products_df = get_product_catalog(show_progress=True)
-    products_df['extract_date'] = datetime.date.today().strftime("%Y-%m-%d")
+    products_df['extract_date'] = extract_date
 
     # DuckDB connection with context manager for auto-close
     with duckdb.connect(database=":memory:") as con:
         print("connecting to ducklake ...")
         con.execute(f"""
-        ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}' AS retail_ducklake (CREATE_IF_NOT_EXISTS false);
+        ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}'
+        AS retail_ducklake (CREATE_IF_NOT_EXISTS false);
+        
         USE retail_ducklake ;
         """)
 
@@ -127,9 +135,8 @@ def etl():
         
         # execute write of data to table
         print("load product data to bronze layer")
-        dt = (datetime.date.today()).strftime('%Y-%m-%d')
         con.execute(f"""
-        DELETE FROM retail_bronze.products_src_raw WHERE extract_date = '{dt}' ;
+        DELETE FROM retail_bronze.products_src_raw WHERE extract_date = '{extract_date}' ;
         INSERT INTO retail_bronze.products_src_raw SELECT * FROM products_df ;
         """)
         print("Data loaded")
@@ -140,7 +147,10 @@ def etl():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run ETL process for raw data")
+    parser.add_argument("--extract-date", type=str, help="Extract date in YYYY-MM-DD format")
+    args = parser.parse_args()
+    extract_date = args.extract_date
     print("Running ETL process for BRONZE -- Raw Products Data ...")
-    etl() # process ETL
+    etl(extract_date=extract_date) # process ETL
     print("Data Load to `retail_bronze.products_src_raw` completed")
-    exit()
