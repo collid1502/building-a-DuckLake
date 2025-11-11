@@ -4,7 +4,6 @@ import datetime
 import duckdb
 import argparse
 
-
 # main function to process the transformation of customer data from Bronze to Silver
 def main(extract_date: str):
     """
