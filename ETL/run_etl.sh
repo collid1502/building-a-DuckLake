@@ -32,7 +32,7 @@ while [ "$current_date" != "$(date -I -d "$end_date + 1 day")" ]; do
     # Silver Layer
     echo "Build silver layer ..."
 
-    $PYTHON ./Silver_layer/dim_customer.py --extract-date "$current_date"
+    #$PYTHON ./Silver_layer/dim_customer.py --extract-date "$current_date"
 
     echo "Finished ETL for $current_date"
     echo 

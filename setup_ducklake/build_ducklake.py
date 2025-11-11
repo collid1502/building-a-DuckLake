@@ -56,7 +56,8 @@ def build():
 
     # create the ducklake, providing details to our postgres host
     create_ducklake = f"""
-    ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}' AS retail_ducklake
+    ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}' 
+    AS retail_ducklake
     (DATA_PATH '/home/dev/workspace/setup_ducklake/data', ENCRYPTED) ;
 
     USE retail_ducklake ;
@@ -64,8 +65,12 @@ def build():
     con.execute(create_ducklake)
 
     # create a secret for the Postgres Metadata Connection
+    try:
+        con.execute("DROP PERSISTENT SECRET pg_ducklake ;")
+    except:
+        print("No secret to drop")
+
     pg_secret = f"""
-    DROP PERSISTENT SECRET pg_ducklake ;
     CREATE PERSISTENT SECRET pg_ducklake (
         TYPE postgres,
         HOST '{pg_host}',
@@ -80,6 +85,7 @@ def build():
     # set the global parquet compression algorithm used when writing Parquet files
     con.execute("CALL retail_ducklake.set_option('parquet_compression', 'zstd')")
 
+    print("Creating schemas ...")
     ## Build Bronze Silver & Gold Layers
     build_medallion = """
     CREATE SCHEMA IF NOT EXISTS retail_bronze ;
@@ -87,6 +93,7 @@ def build():
     CREATE SCHEMA IF NOT EXISTS retail_gold ;
     """
     con.execute(build_medallion)
+    print("Schemas Created")
 
     # detach from ducklake
     con.execute("""
