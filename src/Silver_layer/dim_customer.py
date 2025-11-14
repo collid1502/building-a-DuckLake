@@ -1,28 +1,26 @@
 # imports 
 import os
-import datetime
-import duckdb
 import argparse
+import duckdb
 from sqlframe.duckdb import DuckDBSession, functions as F, types as T
+from src.utilities.ducklake_helpers import connectToDucklake, ducklakeMerge
 
 
 # main function to process the transformation of customer data from Bronze to Silver
 def main(extract_date: str):
     """
-    Process the ETL stage of loading raw store data to bronze layer of DuckLake.
-    Automatically manages connection context to ensure clean closure.
+    Process the ETL stage of loading converting Bronze Data to Silver Data: `dim_customer`
     """
-    pg_host = os.getenv('PG_HOST')
-    pg_user = os.getenv('PG_USER')
-    pg_password = os.getenv('PG_PASSWORD')
+    # specify ducklake connection creds for ETL workloads
+    ducklake_creds = {
+        "catalog": "ducklake_catalog",
+        "pg_host": os.getenv('PG_HOST'),
+        "pg_user": os.getenv('PG_USER'),
+        "pg_password": os.getenv('PG_PASSWORD')
+    }
 
-    conn = duckdb.connect(database=":memory:")
-    # Use the underlying connection to attach to DuckLake
-    conn.execute(f"""
-    ATTACH 'ducklake:postgres:dbname=ducklake_catalog host={pg_host} user={pg_user} password={pg_password}'
-    AS retail_ducklake ;
-    """)
-    conn.execute("USE retail_ducklake ;") # type: ignore
+    print("connecting to ducklake ...")
+    conn = connectToDucklake("retail_ducklake", ducklake_creds) # provide a connection object for Ducklake
 
     # create spark session via DuckDB
     spark = DuckDBSession(conn=conn)
@@ -45,9 +43,9 @@ def main(extract_date: str):
     # Create the table if it does not exist (and do nothing if it already exists)
     empty_dim_customer_df.write.mode("ignore").saveAsTable("retail_silver.dim_customer")
 
-    # Now, we need to read the latest data from the bronze layer for customer_src_raw
+    # Now, we need to read the latest data from the bronze layer for customers_src_raw
     src_cust_df = (
-        spark.table("retail_bronze.customer_src_raw")
+        spark.table("retail_bronze.customers_src_raw")
         .filter(F.col("extract_date") == extract_date)
         .select(
             F.col("customerId").alias("customer_id"),
@@ -99,53 +97,20 @@ def main(extract_date: str):
             .otherwise(F.lit("UNCHANGED"))
         )
         .filter(F.col("change_type").isin(["NEW", "CHANGED"]))
+        .drop("change_type", "check_hash", "current_hash")
     )
 
-    # Temp Save Table to schema - will be wiped after
-    updated_df.write.mode("overwrite").saveAsTable("retail_silver.TEMP_UPDATED_CUSTOMERS")
-
-    # Process the Merge-Into to update existing records
-    extract_dt = datetime.datetime.strptime(extract_date, "%Y-%m-%d").date()
-    now_dt = datetime.datetime.now()
-    # replace just the date part
-    fixed_dt = now_dt.replace(year=extract_dt.year, month=extract_dt.month, day=extract_dt.day)
-
-    # Write Merge-Into Statement. Not yet supported in SQLFrame PySpark, but we can directly use underlying DuckDB
-    Merge_Stmt = f"""
-    MERGE INTO retail_silver.dim_customer AS trgt
-    USING 
-        (
-        SELECT
-            *,
-            '{fixed_dt}' AS validFrom,
-            NULL AS validTo,
-            TRUE AS isCurrent
-        FROM retail_silver.TEMP_UPDATED_CUSTOMERS 
-    ) AS src
-    ON (src.customer_id = trgt.customer_id)
-    WHEN MATCHED AND trgt.isCurrent = TRUE THEN UPDATE
-    SET
-        validTo = '{fixed_dt}',
-        isCurrent = FALSE
-    WHEN NOT MATCHED THEN
-    INSERT (
-        customer_id, customer_joined, name, dob, profession, email, 
-        rewards_programme_member, validFrom, validTo, isCurrent
+    # process the Merge Into using custom utility function
+    ducklakeMerge(
+        session=spark,
+        targetSchema="retail_silver",
+        targetTbl="dim_customer",
+        srcDF=updated_df,
+        extract_date=extract_date,
+        merge_on_id="customer_id"
     )
-    VALUES (
-        src.customer_id, src.customer_joined, src.name, src.dob, src.profession, src.email,
-        src.rewards_programme_member, src.validFrom, src.validTo, src.isCurrent
-    ) ;
-    """
-    spark._conn.execute(Merge_Stmt) # type: ignore
-    
-    # End of SCD2 Customer Dim Update - drop TEMP table from earlier
-    spark._conn.execute("DROP TABLE retail_silver.TEMP_UPDATED_CUSTOMERS") # type: ignore
-    spark._conn.execute("USE memory ;") # type: ignore
-    spark._conn.execute("DETACH retail_ducklake ;") # type: ignore
     # close connection
     spark.stop()
-
 
     
 if __name__ == "__main__":

@@ -18,10 +18,10 @@ current_date="$start_date"
 while [ "$current_date" != "$(date -I -d "$end_date + 1 day")" ]; do
     echo "Running ETL for extract-date: $current_date"
 
-    $PYTHON ./Bronze_layer/source_customer_data.py --extract-date "$current_date" &
-    $PYTHON ./Bronze_layer/source_transaction_data.py --extract-date "$current_date" &
-    $PYTHON ./Bronze_layer/source_store_data.py --extract-date "$current_date" &
-    $PYTHON ./Bronze_layer/source_product_data.py --extract-date "$current_date" &
+    $PYTHON -m src.Bronze_layer.source_data --extract-date "$current_date" --src "customers" &
+    $PYTHON -m src.Bronze_layer.source_data --extract-date "$current_date" --src "products" &
+    $PYTHON -m src.Bronze_layer.source_data --extract-date "$current_date" --src "stores" &
+    $PYTHON -m src.Bronze_layer.source_data --extract-date "$current_date" --src "transactions" &
 
     wait
 
@@ -32,7 +32,7 @@ while [ "$current_date" != "$(date -I -d "$end_date + 1 day")" ]; do
     # Silver Layer
     echo "Build silver layer ..."
 
-    #$PYTHON ./Silver_layer/dim_customer.py --extract-date "$current_date"
+    $PYTHON -m src.Silver_layer.dim_customer --extract-date "$current_date"
 
     echo "Finished ETL for $current_date"
     echo 
